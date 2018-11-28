@@ -42,9 +42,12 @@ library(stargazer)
 
 # a. Read in data as 'homes':
 
+homes <- read_csv("slo_homes.csv")
 
 # b. Filter to only include cities "San Luis Obispo", "Santa Maria-Orcutt", "Atascadero", and "Arroyo Grande", and call this new subset 'homes_sub':
 
+homes_sub <- homes %>% 
+  filter(City == "San Luis Obispo" | City == "Santa Maria-Orcutt" | City == "Atascadero" | City == "Arroyo Grande")
 
 
 ```
@@ -108,8 +111,10 @@ Use summary() to view the model output and statistics.
 
 # a. Saturated model: 
 
+homes_lm1 <- lm(Price ~ City + Bedrooms + Bathrooms + SqFt + PricePerSqFt + Status, data = homes_sub)
 
 # b. Model summary:
+summary(homes_lm1)
 
 ```
 
@@ -119,7 +124,11 @@ The next model: Exclude price per square foot, and bedrooms/bathrooms (since the
 
 # a. Updated model with variables City, SqFt, and Status:
 
+homes_lm2 <- lm(Price ~ City + SqFt + Status, data = homes_sub)
+
 # b. Model summary:
+
+summary(homes_lm2)
 
 ```
 
@@ -129,19 +138,28 @@ Wait...but what if I wanted everything to be with respect to a Regular sale stat
 
 # a. Set Status to class 'factor'
 
+homes_sub$Status <- factor(homes_sub$Status)
 
 # b. Check to ensure it's a factor now
 
+# use class()
 
 # c. Check levels:
 
+# use levels()
 
 # d. Reassign reference level of "Status" to "Regular":
 
+# fct_relevel() function in forcats, lets you set whatever level you want
 
 # e. Now run the regression again - same equation, but now the reference level is different (Status = Regular): 
 
+homes_sub$Status <- fct_relevel(homes_sub$Status, "Regular")
 
+# this way you can reset which level R uses as the reference level
+
+homes_lm3 <- lm(Price ~ City + SqFt + Status, data = homes_sub)
+summary(homes_lm3)
 
 ```
 
@@ -157,6 +175,7 @@ Then we can evaluate model diagnostics using the plot() function:
 ```{r diagnostics}
 
 # a. Model diagnostics:
+plot(homes_lm3)
 
 ```
 
@@ -168,6 +187,12 @@ The AIC is a quantitative metric for model "optimization" that balances complexi
 
 # a. AIC values for each model
 
+full_aic <- AIC(homes_lm1) # 10699.25
+final_aic<- AIC(homes_lm3) # 11148
+
+# would pick the full_aic if you only looked at the first model, but remember if you look at everything else doesn't make sense to pick the first model at all
+
+
 # Answer: which would you pick? 
 
 ```
@@ -178,7 +203,7 @@ The AIC is a quantitative metric for model "optimization" that balances complexi
 
 # a. Prepare a nice regression table:
 
-
+stargazer(homes_lm1, homes_lm3, type = "html")
 
 # Note: If you want to work with this in Word, save to html, open, copy and paste into Word. 
 
@@ -230,7 +255,11 @@ Make predictions for the new data using predict():
 
 # a. Make predictions using the new data frame:
 
+price_predict <- predict(homes_lm3, newdata = df_new, se.fit = TRUE, interval = "confidence")
+
 # b. Bind predictions to the data to make it actually useful:
+
+predict_df <- data.frame(df_new, price_predict)
 
 
 
@@ -242,6 +271,12 @@ Then visualize it!
 
 # Create a line graph with square footage on the x-axis, predicted price on y-axis, with color dependent on City and facet_wrapped by sale status (follow along):
 
+predict_graph <- ggplot(predict_df, aes(x = SqFt, y = fit.fit)) +
+  geom_line(aes(color = City)) +
+  geom_point(data = homes_sub, aes(x = SqFt, y = Price), alpha = 0.5) +
+  facet_wrap(~Status)
+
+predict_graph
 
 ```
 
